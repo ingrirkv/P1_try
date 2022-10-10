@@ -50,16 +50,16 @@ model.s = pyo.RangeSet(0,4)
 model.t = pyo.RangeSet(0,48)
 
 "parametere"
-"V_0 =5                 #starting volume in the reservoir given in Mm3
-"V_MAX = 10             #maximum volume in the reservoir given in Mm3
-"Q_Max = 0.36           #maximum outflow per hour from the reservoir given in Mm3/h
-"P_MAX = 100            #maximum production per hour given in MW
-"M3S_TO_MM3= 0.0036             #[Mm3/m^3], Conversion factor from cubic meter persecond to Mm3 (million cubic meter)"
-"E_conv = 0.981          #[MWh/m^3],Power equivalent from discharged water to produced electricity. "
-"WV_end = 13000          #[EUR/Mm3], Water value for leftover hydropower at the end of the 48th hour."
-"rho_s = 0.2"
-"T = 48"
-"S = 5"
+V_0 =5                 #starting volume in the reservoir given in Mm3
+V_MAX = 10             #maximum volume in the reservoir given in Mm3
+Q_Max = 0.36           #maximum outflow per hour from the reservoir given in Mm3/h
+P_MAX = 100            #maximum production per hour given in MW
+M3S_TO_MM3 = 0.0036    #conversion factor
+E_conv = 0.981         #conversion factor for discharge water to produce electricity
+WV_end = 13000         #end water value for all scenarios given in EUR/Mm3
+rho_s = 0.2            #probability for scenario s, equals 0.2 for all s
+T = 48                 #number of hour
+S = 5                  #number of scenarios
 
 model.V_0 = pyo.Param(within = pyo.NonNegativeIntegers, initialize= 5)
 model.rho_s = pyo.Param(model.s, initialize= 0.2)
@@ -69,12 +69,12 @@ model.T = pyo.Param(initialize=48)
 
 "Variables"
 model.Z = pyo.Var()     #profitt
-model.P = pyo.Var(model.t, model.s, domain = pyo.NonNegativeReals)                     #produsert elektrisitet [MWh]
-model.I = pyo.Var(model.t,model.s, domain = pyo.NonNegativeReals, initialize = 25*s) #inflow
-model.Q = pyo.Var(model.t,model.s, domain = pyo.NonNegativeReals)                     #outflow
-model.p = pyo.Var(model.t, model.s, domain = pyo.NonNegativeReals, initialize=50*t) #pris
-model.V = pyo.Var(model.t, model.s, domain = pyo.NonNegativeReals)
-model.WV = pyo.Var(model.T, model.s, domain = pyo.NonNegativeReals)
+model.P_{t,s} = pyo.Var(model.t, model.s, domain = pyo.NonNegativeReals)                     #produsert elektrisitet [MWh]
+model.I_{t,s} = pyo.Var(model.t,model.s, domain = pyo.NonNegativeReals, initialize = 25*s) #inflow
+model.Q_{t,s} = pyo.Var(model.t,model.s, domain = pyo.NonNegativeReals)                     #outflow
+model.p_{t} = pyo.Var(model.t, model.s, domain = pyo.NonNegativeReals, initialize=50*t) #pris
+model.V_{t,s} = pyo.Var(model.t, model.s, domain = pyo.NonNegativeReals)
+
 "model.OBJ = pyo.Objective(sum())"
 def objective_func(m):
     return pyo.summation(m.P[t,s], m.p[t], m.ro_scenario[s])
