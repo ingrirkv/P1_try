@@ -42,7 +42,7 @@ from __future__ import division
 
 model = pyo.ConcreateModel()    '#Establish the optimization model, as a concrete model'
 
-"model.m = pyo.Param(within = pyo.NonNegativeIntegers)
+"model.m = pyo.Param(within = pyo.NonNegativeIntegers)"
 "model.n = pyo.Param(within = pyo.NonNegativeIntegers)"
 
 "sets"
@@ -63,7 +63,7 @@ model.t = pyo.RangeSet(0,48)
 
 model.V_0 = pyo.Param(within = pyo.NonNegativeIntegers, initialize= 5)
 model.rho_s = pyo.Param(model.s, initialize= 0.2)
-model.Q_max = pyo.Param(model.t, model.s, initialize=0.36)
+model.Q_max = pyo.Param(model.t, model.s, initialize=Q_Max)
 model.T = pyo.Param(initialize=48)
 
 
