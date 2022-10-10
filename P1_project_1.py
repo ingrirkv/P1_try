@@ -38,3 +38,6 @@ Inflow_Last_24h = 24*s  #[m^3/s], The inflow for the last 24 hours, given hourly
 N_Scenarios = 5         #[-], The number of scenarios for the second stage (last 24 hours)
 p_scenario = 1/5        #[per unit],  The probability for each scenario.
 Price = 50*t            #[EUR/MWh], The power prices for all 48 hours, given as a linearly increasing cost based on time step t. Assumes 0-index.Example: For hour 13 the cost is 50+13 = 63.
+
+
+"dette er en test 2"
