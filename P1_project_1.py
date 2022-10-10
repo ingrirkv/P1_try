@@ -40,4 +40,5 @@ p_scenario = 1/5        #[per unit],  The probability for each scenario.
 Price = 50*t            #[EUR/MWh], The power prices for all 48 hours, given as a linearly increasing cost based on time step t. Assumes 0-index.Example: For hour 13 the cost is 50+13 = 63.
 
 
-"dette er en test 2"
+"dette er en test 3"
+hallo
