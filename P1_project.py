@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 
 #Establish the optimization model, as a concrete model
 model = pyo.ConcreteModel()
+
 """sets"""
 model.T_range = pyo.Param(initialize=48)
 model.S_range = pyo.Param(initialize=4)
