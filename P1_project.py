@@ -179,9 +179,9 @@ model.C7 = pyo.Constraint(rule = constraint_I1 )
 """Solve the problem"""
 
 # Solve the problem
-results = pyo.opt.solve(model, load_solutions=True)
-
-print("objective func: ", results)
+opt = pyo.SolverFactory()
+result = opt.solve(model, load_solutions=True)
+print("objective func: ", result)
 
 
 
