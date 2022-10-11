@@ -7,7 +7,8 @@ Created on Tue Oct  4 10:02:03 2022
 
 """
 
-"HYDROPOWER PROBLEM "
+"""HYDROPOWER PROBLEM """
+#from __future__ import division
 import pyomo.environ as pyo
 from pyomo.opt import SolverFactory
 import numpy as np
@@ -15,25 +16,24 @@ import sys
 import time
 import pandas as pd
 import matplotlib.pyplot as plt
-from __future__ import division
+
 
 
 
 #Inflow_first_24h = 50   #[m^3/s], The inflow for the first 24 hours, given hourly"
 #Inflow_Last_24h = 25*s  #[m^3/s], The inflow for the last 24 hours, given hourly. This includes uncertainty and a 0-index formulation. Example: For scenario 0, inflow is 10*0 = 0"
 
-model = pyo.ConcreteModel()    '#Establish the optimization model, as a concrete model'
+#Establish the optimization model, as a concrete model
+model = pyo.ConcreteModel()
+"""sets"""
+model.T_range = pyo.Param(initialize=48)
+model.S_range = pyo.Param(initialize=4)
+
+model.S = pyo.RangeSet(model.S_range)
+model.T = pyo.RangeSet(model.T_range)
 
 
-"sets"
-model.s = pyo.RangeSet(0,5)
-model.t = pyo.RangeSet(0,48)
-#Bruk Set
-T = [0,48] #liste FIKSEEE
-S =[1,2,3,4,5]
-model.S = pyo.Set(initialize=S)
-
-"parametere"
+"""parametere"""
 V_0 = 5                #starting volume in the reservoir given in Mm3
 V_MAX = 10             #maximum volume in the reservoir given in Mm3
 Q_Max = 0.36           #maximum outflow per hour from the reservoir given in Mm3/h
@@ -42,27 +42,21 @@ M_conv = 0.0036        #conversion factor given in [Mm3/m^3]
 E_conv = 0.981         #conversion factor for discharge water to produce electricity, [Mm3/m^3]
 WV_end = 13000         #end water value for all scenarios given in EUR/Mm3
 rho_s = 0.2            #probability for scenario s, equals 0.2 for all s
-#T_max = 48                 #number of hour
-#S_max = 5                  #number of scenarios
 
 
-#må man bruke param for å bevise/markere de er parametere?
-model.V_0 = pyo.Param(initialize = V_O)
-model.V_MAX = pyo.Param(initialize = V_MAX)
-model.Q_max = pyo.Param(model.t, model.s, initialize=Q_Max) #ta bort t og s
-model.P_MAX = pyo.Param(model.t, initialize= P_MAX)
-model.M_conv = pyo.Param(initialize = M_conv)
-model.E_conv = pyo.Param(initialize = E_conv)
-model.WV_end = pyo.Param(initialize = WV_end)
-model.rho_s = pyo.Param(model.s, initialize= rho_s) #ta bort s
 
-model.I_ts = pyo.Param(model.T, model.S, initialize=0) #Se over
-model.p_t = pyo.Param(model.T, initialize=0) #Se over
+#initialize the parameters to the model:
+model.V_0 = pyo.Param(initialize=V_0)
+model.V_MAX = pyo.Param(initialize=V_MAX)
+model.Q_max = pyo.Param(initialize=Q_Max)
+model.P_MAX = pyo.Param(initialize=P_MAX)
+model.M_conv = pyo.Param(initialize=M_conv)
+model.E_conv = pyo.Param(initialize=E_conv)
+model.WV_end = pyo.Param(initialize=WV_end)
+model.rho_s = pyo.Param(initialize=rho_s)
 
-#model.T_max = pyo.Param(initialize=T)
-#model.S_max = pyo.Param(initialize=S)
-#må set-ene også defineres her som en parameter?
-
+model.I_ts = pyo.Param(model.T, model.S, initialize=0) #inflow
+model.p_t = pyo.Param(model.T, initialize=50) #price
 
 #vi definerer alle variabler som tomme uten verdi, slik de er forklart i latex filen. er dette da gjort riktig?
 # eller skal alle parantesene stå tomme?
@@ -102,7 +96,7 @@ model.OBJ = pyo.Objective(rule = objective_func, sense = pyo.maximize)
 #må vi dobbelsummere over t og s eller holder det å summere en gang slik som her?
 
 def objective_rule (model):
-    return sum(sum(model.P_ts[t,s]*model.p_t[t]*model.rho_s for s in model.S) for t in model.T) + np.sum(model.WV_end*model.V_ts[48,s] for s in model.S)
+    return sum(sum(model.P_ts[t,s]*model.p_t[t]*model.rho_s for s in model.S) for t in model.T) + sum(model.WV_end*model.V_ts[48,s] for s in model.S)
 model.OBJ = pyo.Objective(rule = objective_rule, sense = pyo.maximize)
 
 
@@ -170,12 +164,26 @@ def constraint_():
         return (model.p_t[t]== 50+model.t)
     model.C6 = pyo.Constraint(rule = constraint_pt)
     
-    #Constraint 7:
-    def constraint_I1(model,t,s):
-        if (t in range(23)):
-            return (model.I_ts[t,s]== 0.18)
-        else:
+#Constraint 7, inflow
+def constraint_I1(model,t,s):
+    if (t==0):
+         return model.I_ts[t,s] ==0
+    elif (t <24):
+        return (model.I_ts[t,s]== 0.18)
+    else:
+         return (model.I_ts[t, s] == 0.09*model.s)
+model.C7 = pyo.Constraint(rule = constraint_I1 )
 
-    model.C7 = pyo.Constraint(rule = constraint_I1 )
 
-    def cons
+
+"""Solve the problem"""
+
+# Solve the problem
+results = pyo.opt.solve(model, load_solutions=True)
+
+print("objective func: ", results)
+
+
+
+#opt = pyo.SolverFactory('glpk')
+#results = opt.solve(model, stream-solver=true)
