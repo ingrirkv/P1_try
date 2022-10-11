@@ -114,7 +114,7 @@ model.C6 = pyo.constraint(rule = constraint_pt)
 #Constraint 7, inflow
 def constraint_I1(model,t,s):
     if (t==0):
-         return model.I_ts[t,s] ==0
+         return (model.I_ts[t,s] ==0)
     elif (t <24):
         return (model.I_ts[t,s]== 0.18)
     else:
