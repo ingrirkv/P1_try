@@ -196,7 +196,7 @@ opt = SolverFactory(solver,load_solution=True)
 results     = opt.solve(model, load_solutions = True)
 model.display()
 model.OBJ.display()
-print("objective func: ", opt)
+#print("objective func: ", opt)
 #for s in model.S:
 #    print(model.S, model.T, model.V_ts, model.P_ts)
 
