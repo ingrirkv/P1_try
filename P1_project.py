@@ -43,6 +43,8 @@ M_conv = 0.0036        #conversion factor given in [Mm3/m^3]
 E_conv = 0.981         #conversion factor for discharge water to produce electricity, [Mm3/m^3]
 WV_end = 13000         #end water value for all scenarios given in EUR/Mm3
 rho_s = 0.2            #probability for scenario s, equals 0.2 for all s
+A_inflow = 0.09        #Hjelpevariabel for å beregne inflow per scenario
+B_inflow = 0.18        ##Hjelpevariabel for å beregne inflow per scenario
 
 t = [i for i in range(50)]
 print("dette er lista", t)
@@ -51,15 +53,16 @@ print("dette er lista", t)
 model.V_0 = pyo.Param(initialize=V_0)
 model.V_MAX = pyo.Param(initialize=V_MAX)
 model.Q_Max = pyo.Param(initialize=Q_Max)
-model.P_MAX = pyo.Param(initialize=P_MAX)
+model.P_Max = pyo.Param(initialize=P_MAX)
 model.M_conv = pyo.Param(initialize=M_conv)
 model.E_conv = pyo.Param(initialize=E_conv)
 model.WV_end = pyo.Param(initialize=WV_end)
 model.rho_s = pyo.Param(initialize=rho_s)
-
+model.A_inflow = pyo.Param(initialize=A_inflow)
+model.B_inflow = pyo.Param(initialize=B_inflow)
 Dict={}
 for t in range(49):
-    Dict[t]= 50+t
+    Dict[t]=50+t
 model.p_t = pyo.Param(model.T, initialize=Dict)
 print("Pris", Dict)
 
@@ -80,8 +83,10 @@ model.I_ts = pyo.Var(model.T, model.S, domain=pyo.NonNegativeReals) #inflow , br
 #model.OBJ = pyo.Objective(rule = objective_func, sense = pyo.maximize)
 #må vi dobbelsummere over t og s eller holder det å summere en gang slik som her?
 
-def objective_rule (model):
-    return sum(sum(model.P_ts[t,s]*model.p_t[t]*model.rho_s for s in model.S) for t in model.T) + sum(model.WV_end*model.V_ts[48,s] for s in model.S)
+def objective_rule (model): #husk  legge til rho i siste sum
+    del1 = sum(sum(model.P_ts[t,s]*model.p_t[t]*model.rho_s for s in model.S) for t in model.T)
+    del2 = sum(model.WV_end*model.V_ts[48,s]*model.rho_s for s in model.S)
+    return del1 + del2
 model.OBJ = pyo.Objective(rule = objective_rule, sense = pyo.maximize)
 
 
@@ -89,30 +94,69 @@ model.OBJ = pyo.Objective(rule = objective_rule, sense = pyo.maximize)
 """constraints"""
 #constraint 1, ensure that Q_ts is lower than Qmax
 def constraint_Q(model,t,s):
-    return (model.Q_ts[t,s] <= model.Q_Max )
+    if t==0:
+        return model.Q_ts[t,s]== 0
+    else:
+        return model.Q_ts[t,s] <= model.Q_Max
 model.C1 = pyo.Constraint(model.T,model.S,rule=constraint_Q)
 
 #constraint 2, constraint for water volume
-def constraint_v1(model,t,s): #lage en hjelpevariabel
-    if (t==0):
-        return (model.V_ts[0,s] == 5)
-    #return (model.V_ts[t, s] == model.V_ts[0, s] + 0 - model.Q_ts[t, s])
+def constraint_V(model,t,s):
+    if(t==0):
+        return(model.V_ts[0,s]== 5)
+    elif(t>=1 and t<=24):
+        return(model.V_ts[t,s] == model.V_ts[t-1,s] + model.B_inflow - model.Q_ts[t,s])
     else:
-       # if s == 0  #alle scenarioer
-        return (model.V_ts[t, s] == model.V_ts[t - 1, s] + model.I_ts[t, s] - model.Q_ts[t, s]) #endre I_ts til Inflow_ts
-    model.C2 = pyo.Constraint(model.T, model.S, rule=constraint_v1)
+        return (model.V_ts[t, s] == model.V_ts[t - 1, s] + model.A_inflow*s - model.Q_ts[t, s])
+model.C2 = pyo.Constraint(model.T,model.S,rule=constraint_V)
 
 #Constraint 3, ensure that V_ts is lower than Vmax
-def constraint_V3 (model,t,s):
+def constraint_V2 (model,t,s):
     return (model.V_ts[t,s] <= model.V_MAX)
-model.C3 = pyo.Constraint(model.T, model.S, rule = constraint_V3)
+model.C3 = pyo.Constraint(model.T, model.S, rule = constraint_V2)
 
-#Constraint 4, P_vt
+#constraint 8, sikre at vi kun har ett utfall de første 24 timene
+def constraint_V3(model,t):
+    if t >24:
+        return pyo.Constraint.Skip
+    else:
+        return model.V_ts[t,0]==model.V_ts[t,1]
+model.C8 = pyo.Constraint(model.T, rule = constraint_V3)
+
+def constraint_V4(model,t):
+    if t > 24:
+        return pyo.Constraint.Skip
+    else:
+        return model.V_ts[t, 1] == model.V_ts[t,2]
+model.C9 = pyo.Constraint(model.T, rule = constraint_V4)
+
+def constraint_V5(model, t):
+    if t > 24:
+        return pyo.Constraint.Skip
+    else:
+        return model.V_ts[t, 2] == model.V_ts[t, 3]
+model.C10 = pyo.Constraint(model.T, rule = constraint_V5)
+
+def constraint_V6(model, t):
+    if t > 24:
+        return pyo.Constraint.Skip
+    else:
+        return model.V_ts[t, 3] == model.V_ts[t, 4]
+model.C11 = pyo.Constraint(model.T, rule = constraint_V6)
+
+def constraint_V7(model, t):
+    if t > 24:
+        return pyo.Constraint.Skip
+    else:
+        return model.V_ts[t, 4] == model.V_ts[t, 0]
+model.C12 = pyo.Constraint(model.T, rule = constraint_V7)
+
+#Constraint 4, P_vt, kan legges i obj
 def constraint_P1(model,t,s):
     return (model.P_ts[t,s] == model.Q_ts[t,s]*model.E_conv*(1/model.M_conv))
 model.C4 = pyo.Constraint(model.T, model.S, rule = constraint_P1)
 
-#Constraint 5, ensure that P_ts is lower than Pmax
+#Constraint 5, ensure that P_ts is lower than Pmax, trenger egentlig ikke
 def constraint_Pmax(model,t,s):
     return (model.P_ts[t,s] <= model.P_Max)
 model.C5 = pyo.Constraint(model.T, model.S, rule = constraint_Pmax)
@@ -125,32 +169,36 @@ model.C5 = pyo.Constraint(model.T, model.S, rule = constraint_Pmax)
 #Constraint 7, inflow
 def constraint_I1(model,t,s):
     if (t==0):
-         return (model.I_ts[t,s] ==0)
+         return model.I_ts[t,s] ==0
     elif (t <24):
-        return (model.I_ts[t,s]== 0.18)
+        return model.I_ts[t,s]== model.B_inflow
     else:
-         return (model.I_ts[t, s] == 0.09*model.s)
+         return model.I_ts[t, s] == model.A_inflow*s
 model.C7 = pyo.Constraint(model.T, model.S, rule = constraint_I1 )
+
 
 
 #Constraint 9, sikre at vi kun har ett utfall de første 24 timene
 def constraint_P2(model):
     for t in range(24):
         return(model.P_ts[t,0]==model.P_ts[t,1]==model.P_ts[t,2]==model.P_ts[t,3]==model.P_ts[t,4])
-model.C9 = pyo.Constraint(rule = constraint_P2)
+    model.C9 = pyo.Constraint(rule = constraint_P2)
+
+
 
 
 
 """Solve the problem"""
 
 # Solve the problem,
-solver = 'gurobi_ampl'
-solver_io = 'nl'
-opt = SolverFactory(solver ,solver_io=solver_io)
+solver = 'gurobi'
+opt = SolverFactory(solver,load_solution=True)
+results     = opt.solve(model, load_solutions = True)
+model.display()
+model.OBJ.display()
 print("objective func: ", opt)
-
-for s in model.S:
-    print(model.s, model.t, model.V_ts, model.P_ts)
+#for s in model.S:
+#    print(model.S, model.T, model.V_ts, model.P_ts)
 
 #opt = pyo.SolverFactory('glpk')
 #results = opt.solve(model, stream-solver=true)
