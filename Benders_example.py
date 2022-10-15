@@ -67,10 +67,7 @@ def Create_cuts(Data_raw, Cuts_data):
    # except: 
        # pass 
        # max_key = -1
-       
 
-    
-    
 Data= Input_data()
 
 x_1_data = {}
