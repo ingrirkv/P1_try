@@ -8,12 +8,12 @@ import matplotlib.pyplot as plt
 model = pyo.ConcreteModel()
 
 """sets"""
-T1_range = 24
-T2_range = 48
+T_1_range = 24
+T_2_range = 48
 I_range = 20 #number of iterations
 S_range = 4 #scenarios
-model.T1 = pyo.RangeSet(0,T1_range)
-model.T2 = pyo.RangeSet(25,T2_range)
+model.T_1 = pyo.RangeSet(0,T_1_range)
+model.T_2 = pyo.RangeSet(0,T_2_range)
 model.S = pyo.RangeSet(0,S_range)
 model.Iteration = pyo.RangeSet(0,I_range)
 
@@ -45,32 +45,37 @@ model.alpha= pyo.Param(initialize=alpha)
 
 #price:
 Dict={}
-for t in range(49):
+for t in range(24):
     Dict[t]=50+t
-model.p_t = pyo.Param(model.T, initialize=Dict)
+model.p_t = pyo.Param(model.T_1, initialize=Dict)
 print("Pris", Dict)
 
+Dict={}
+for g in range(25, 48):
+    Dict[g]= 50+g
+model.p_t = pyo.Param(model.T_2, initialize=Dict)
+print("Pris", Dict)
 
 "Variables"
-model.P_t = pyo.Var(model.T1, domain=pyo.NonNegativeReals) #produced electricity
-model.Q_t = pyo.Var(model.T1, domain=pyo.NonNegativeReals) #outflow
-model.V1_t = pyo.Var(model.T1, domain=pyo.NonNegativeReals) #volume of water during the first 24 hours
-model.b = pyo.Var(model.I, domain= pyo.NonNegativeReals) # b i y = ax+b
-model.dual = pyo.Var(model.I, domain= pyo.NonNegativeReals) #a
-model.x_1 = pyo.Var(model.I, domain= pyo.NonNegativeReals)
+model.P_t = pyo.Var(model.T_1, domain=pyo.NonNegativeReals) #produced electricity
+model.Q_t = pyo.Var(model.T_1, domain=pyo.NonNegativeReals) #outflow
+model.V1_t = pyo.Var(model.T_1, domain=pyo.NonNegativeReals) #volume of water during the first 24 hours
+model.b = pyo.Var(model.Iteration, domain= pyo.NonNegativeReals) # b i y = ax+b
+model.dual = pyo.Var(model.Iteration, domain= pyo.NonNegativeReals) #a
+model.x_1 = pyo.Var(model.Iteration, domain= pyo.NonNegativeReals)
 
 #master
-def MasterProblem(model, iteration, Cuts_data):
+
+
+def MasterProblem(model, Cuts_data): #ha med itaration,
     # This is the master problem variable output
-
-    print(model.V_t)
-    print(Cuts_data)
-
     """objective function"""
-    OBJ1 = sum(model.P_t[t] * model.p_t[t] for t in model.T1 + model.alpha)  # Objective function
-    x_1 = model.V1_t[24]
-    return (OBJ1,x_1)
-model.OBJ1 = pyo.Objective(rule=MasterProblem, sense=pyo.maximize)
+    OBJ1 = sum(model.P_t[t] * model.p_t[t] for t in model.T_1 )  # Objective function, er noe feil her for vi må egentlig bruke den Cuts_data
+    x_1 = pyo.value(model.V1_t[24])
+    print(OBJ1)
+    print("x_1:", x_1)
+    return (x_1)
+model.OBJ1 = pyo.Objective(rule = MasterProblem, sense = pyo.maximize)
     #"""constraints for master problem"""
     # constraint 1, ensure that Q_t is lower than Qmax
 def constraint_Q(model, t):
@@ -78,7 +83,7 @@ def constraint_Q(model, t):
             return model.Q_t[t] == 0
         else:
             return model.Q_t[t] <= model.Q_Max
-model.C1 = pyo.Constraint(model.T1, rule=constraint_Q)
+model.C1 = pyo.Constraint(model.T_1, rule=constraint_Q)
 
 #constraint 2, constraint for water volume
 def constraint_V(model, t):
@@ -86,22 +91,22 @@ def constraint_V(model, t):
         return (model.V1_t[0] == 5)
     else:
         return (model.V1_t[t] == model.V1_t[t - 1] + model.I_1 - model.Q_t[t])
-model.C2 = pyo.Constraint(model.T1, rule=constraint_V)
+model.C2 = pyo.Constraint(model.T_1, rule=constraint_V)
 
 # Constraint 3, ensure that V_t is lower than Vmax
 def constraint_V2(model, t):
     return (model.V1_t[t] <= model.V_MAX)
-model.C3 = pyo.Constraint(model.T1, rule=constraint_V2)
+model.C3 = pyo.Constraint(model.T_1, rule=constraint_V2)
 
 # Constraint 4, P_vt, kan legges i obj
 def constraint_P1(model, t):
     return (model.P_t[t] == model.Q_t[t] * model.E_conv * (1 / model.M_conv))
-model.C4 = pyo.Constraint(model.T1, rule=constraint_P1)
+model.C4 = pyo.Constraint(model.T_1, rule=constraint_P1)
 
 # Constraint 5, ensure that P_ts is lower than Pmax, trenger egentlig ikke
 def constraint_Pmax(model, t):
     return (model.P_ts[t] <= model.P_Max)
-model.C5 = pyo.Constraint(model.T1, rule=constraint_Pmax)
+model.C5 = pyo.Constraint(model.T_1, rule=constraint_Pmax)
 
 # Constraint 6, alpha - må sikre at denne kun leses for iteration 1, 2 ,3 ,4 osv. og ikke for iteration 0
 def constraint_alpha(model, Cuts_data):
@@ -112,7 +117,7 @@ def constraint_alpha(model, Cuts_data):
 model.C5 = pyo.Constraint(model.Iteration, model.aplha, rule=constraint_alpha)
 
 #model.OBJ1 = pyo.Objective(rule=MasterProblem, sense=pyo.maximize)
-model.display()
+
 
 #SubProblem
 def SubProblem(model,x_1): #må finne ut
@@ -128,33 +133,33 @@ def constraint_dual(model,t):
          return (model.V1_t[24] == model.x_1) #legger til at output volum fra masterproblem er nå input volum i sub problem
     else:
         return pyo.Constraint.Skip
-model.C6 = pyo.Constraint(model.T2, rule=constraint_dual)
+model.C6 = pyo.Constraint(model.T_2, rule=constraint_dual)
 
     # constraint 1, ensure that Q_t is lower than Qmax
 def constraint_Q(model, t):
     return model.Q_t[t] <= model.Q_Max
-model.C1 = pyo.Constraint(model.T2, rule=constraint_Q)
+model.C1 = pyo.Constraint(model.T_2, rule=constraint_Q)
 
     # constraint 2, constraint for water volume
 def constraint_V(model, t):
     if (t>=26):
         return (model.V1_t[t] == model.V1_t[t - 1] + model.I_2 - model.Q_t[t])
-model.C2 = pyo.Constraint(model.T2, rule=constraint_V)
+model.C2 = pyo.Constraint(model.T_2, rule=constraint_V)
 
 # Constraint 3, ensure that V_t is lower than Vmax
 def constraint_V2(model, t):
     return (model.V1_t[t] <= model.V_MAX)
-model.C3 = pyo.Constraint(model.T1, rule=constraint_V2)
+model.C3 = pyo.Constraint(model.T_1, rule=constraint_V2)
 
 # Constraint 4, P_vt, kan legges i obj
 def constraint_P1(model, t):
      return (model.P_t[t] == model.Q_t[t] * model.E_conv * (1 / model.M_conv))
-model.C4 = pyo.Constraint(model.T1, model.S, rule=constraint_P1)
+model.C4 = pyo.Constraint(model.T_1, model.S, rule=constraint_P1)
 
 # Constraint 5, ensure that P_ts is lower than Pmax, trenger egentlig ikke
 def constraint_Pmax(model, t):
      return (model.P_ts[t] <= model.P_Max)
-model.C5 = pyo.Constraint(model.T1, rule=constraint_Pmax)
+model.C5 = pyo.Constraint(model.T_1, rule=constraint_Pmax)
 
 
     #dual
@@ -237,10 +242,7 @@ for i in range(model.Iterations):
     """
     temp_data = (model.OBJ2, model.Dual)
     Create_cuts(temp_data, Cuts_data)
-    model.display()
 
-
-
-    # sys.exit()
-
-
+#skriver ut modellen
+model.display()
+model.dual.display()

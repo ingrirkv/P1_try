@@ -46,7 +46,7 @@ def SubProblem(Data, x_1):  #interested in the x_1 value
     
     print("SubProblem data:", Data)
     OBJ = x_1*10*Data
-    Dual = x_1/2*Data
+    Dual = (x_1/2)*Data
     
    # model.param = pyo.Param(initialize = Data["Stochastic_Parameter"]) #only get dtaa in the spesific scenario (Data[1][i])
      
@@ -68,7 +68,7 @@ def Create_cuts(Data_raw, Cuts_data):
        # pass 
        # max_key = -1
 
-Data= Input_data()
+Data = Input_data()
 
 x_1_data = {}
 Cuts_data = {}

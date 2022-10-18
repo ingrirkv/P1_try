@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 
 
 
+
 #Establish the optimization model, as a concrete model
 model = pyo.ConcreteModel()
 
@@ -60,6 +61,7 @@ model.WV_end = pyo.Param(initialize=WV_end)
 model.rho_s = pyo.Param(initialize=rho_s)
 model.A_inflow = pyo.Param(initialize=A_inflow)
 model.B_inflow = pyo.Param(initialize=B_inflow)
+
 Dict={}
 for t in range(49):
     Dict[t]=50+t
@@ -178,7 +180,7 @@ model.C7 = pyo.Constraint(model.T, model.S, rule = constraint_I1 )
 
 
 
-#Constraint 9, sikre at vi kun har ett utfall de første 24 timene
+#Constraint 9, sikre at vi kun har ett utfall de første 24 timene, denen er unødvendig
 def constraint_P2(model):
     for t in range(24):
         return(model.P_ts[t,0]==model.P_ts[t,1]==model.P_ts[t,2]==model.P_ts[t,3]==model.P_ts[t,4])
@@ -194,9 +196,28 @@ def constraint_P2(model):
 solver = 'gurobi'
 opt = SolverFactory(solver,load_solution=True)
 results     = opt.solve(model, load_solutions = True)
-model.display()
+#model.display()
 model.OBJ.display()
-#print("objective func: ", opt)
+#print("objective func: ", results)
+#print("Value of V_tes", pyo.value(model.V_ts))
+model.P_ts.display()
+# enkel plot
+#plt.style.use('_mpl-gallery')
+#y = model.V_ts
+#plt.plot(model.V_ts)
+#plt.show(y)
+
+
+
+# Med titler
+#plot = plt.plot( model.V_ts, width=0.8, color=['blue'])
+
+#plt.ylabel("Reservoir level")
+#plt.xlabel("Hour")
+#plt.title("Reservoir level for 48 hours")
+#plt.show()
+
+
 #for s in model.S:
 #    print(model.S, model.T, model.V_ts, model.P_ts)
 
