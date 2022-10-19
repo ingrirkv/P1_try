@@ -47,7 +47,6 @@ def MasterProblem(Cuts_data):  # ha med itaration,
     print("Pris", Dict)
 
 
-
     "Variables"
     model.P_t = pyo.Var(model.T_1, domain=pyo.NonNegativeReals)  # produced electricity
     model.Q_t = pyo.Var(model.T_1, domain=pyo.NonNegativeReals)  # outflow
@@ -58,6 +57,7 @@ def MasterProblem(Cuts_data):  # ha med itaration,
     """objective function"""
     def objective_func(model):
         obj_del1 = sum(model.P_t[t] * model.p_t[t] for t in model.T_1) + model.alpha  # Cuts_data.   # Objective function, er noe feil her for vi må egentlig bruke den Cuts_data
+        print("obj_1:", obj_del1)
         return obj_del1
     model.obj_del1 = pyo.Objective(rule=objective_func, sense=pyo.maximize)
 
@@ -105,8 +105,8 @@ def MasterProblem(Cuts_data):  # ha med itaration,
     def Constraint_cuts(model, cut):
         print(model.Cuts_data[cut]["slope"], model.Cuts_data[cut]["constant"])
         print("Creating cut: ", cut)
-        model.aplha <= model.Cuts_data[cut]("slope") * model.V1_t[24] + model.Cuts_data[cut]("constant")
-        return (model.alpha)
+        return(model.alpha <= model.Cuts_data[cut]["slope"] * model.V1_t[24] + model.Cuts_data[cut]["constant"])
+
     model.C5 = pyo.Constraint(model.Cuts, rule=Constraint_cuts)
 
 
@@ -115,16 +115,17 @@ def MasterProblem(Cuts_data):  # ha med itaration,
     opt = SolverFactory(solver, load_solution=True)
     results = opt.solve(model, load_solutions=True)
     print("result", results)
-    model.display()
+    #model.display()
+    print("hei",pyo.value(model.obj_del1))
     x_1 = model.V1_t[24]
-
-    return x_1
+    print("dette er verdien til x1:", x_1.value)
+    return x_1.value
 
 
 #subproblem
 def SubProblem(x_1):
     model_2 = pyo.ConcreteModel()
-    model_2.x_1 = x_1 #er denne nødvendig
+    model_2.x_1 = x_1 #legger inn som parameter eller bare x_1
 
     """sets"""
     T_2_range = 48
@@ -178,7 +179,7 @@ def SubProblem(x_1):
     model_2.C6 = pyo.Constraint(rule=constraint_dual)
 
     def constraint_V3(model_2):
-        return (model_2.V1_t[25] == model_2.x_1 + model_2.I_2 + model_2.Q_t[25])
+        return (model_2.V1_t[25] == model_2.x_1 + model_2.I_2 - model_2.Q_t[25]) #sjekk denne mer
     model_2.C7 = pyo.Constraint(rule=constraint_V3)
 
     # constraint 1, ensure that Q_t is lower than Qmax
@@ -190,12 +191,14 @@ def SubProblem(x_1):
     def constraint_V(model_2, t):
         if (t>=26):
             return (model_2.V1_t[t] == model_2.V1_t[t - 1] + model_2.I_2 - model_2.Q_t[t])
+        else:
+            return pyo.Constraint.Skip
     model_2.C2 = pyo.Constraint(model_2.T_2, rule=constraint_V)
 
     # Constraint 3, ensure that V_t is lower than Vmax
     def constraint_V2(model_2, t):
         return (model_2.V1_t[t] <= model_2.V_MAX)
-    model_2.C3 = pyo.Constraint(model_2.T_1, rule=constraint_V2)
+    model_2.C3 = pyo.Constraint(model_2.T_2, rule=constraint_V2)
 
     # Constraint 4, P_vt, kan legges i obj
     def constraint_P1(model_2, t):
@@ -204,35 +207,27 @@ def SubProblem(x_1):
 
     # Constraint 5, ensure that P_ts is lower than Pmax, trenger egentlig ikke
     def constraint_Pmax(model_2, t):
-         return (model_2.P_ts[t] <= model_2.P_Max)
-    model_2.C5 = pyo.Constraint(model_2.T_1, rule=constraint_Pmax)
+         return (model_2.P_t[t] <= model_2.P_Max)
+    model_2.C5 = pyo.Constraint(model_2.T_2, rule=constraint_Pmax)
 
     #løser solver her også også med dual
+    model_2.dual = pyo.Suffix(direction=pyo.Suffix.IMPORT)
+
     solver = 'gurobi'
     opt = SolverFactory(solver, load_solution=True)
     results = opt.solve(model_2, load_solutions=True)
     model_2.display()
-    model_2.dual = pyo.Suffix(direction=pyo.Suffix.IMPORT)
     dual = model_2.dual[model_2.C6]
+    obj_2 = pyo.value(model_2.obj)
 
-    return OBJ2, dual
 
-def CreateCuts(OBJ2, dual, x_1):
-    model_3 = pyo.ConcreteModel()
+    return obj_2, dual
 
-    model_3.OBJ2 = pyo.Param(initialize=OBJ2)
-    model_3.dual = dual
-    model_3.x_1 = x_1
+def CreateCuts(obj_2, dual, x_1):
 
-    # hjelpevariabler:
-    model_3.a = pyo.Var(model_3.a, domain=pyo.NonNegativeReals)  #
-    model_3.b = pyo.Var(model_3.b, domain=pyo.NonNegativeReals)  #
-
-    model_3.a = model_3.dual
-    model_3.b = model_3.OBJ2 - model_3.dual * model_3.x_1
-
-    return (model_3.a, model_3.b)
-
+    a = dual
+    b = obj_2 - dual *x_1
+    return (a,b)
 
 
 
@@ -245,17 +240,17 @@ for it in range (10):
     print("x_1 har verdi:", x_1)
 
     #for s in range(4):
-    dual, OBJ2 = SubProblem(x_1)
+    obj_2, dual = SubProblem(x_1)
 
-    print(dual, OBJ2)
-    a, b = CreateCuts(OBJ2,dual,x_1)
-    print(a,b)
+    print("obj_2:", obj_2," dual", dual)
+    a, b = CreateCuts(obj_2,dual,x_1)
+    print("it:", it, "a: ", a, "b:",b)
 
     #List_of_cuts.append(it)
-    Cuts_data.append(it)
+    #Cuts_data.append(it)
     Cuts_data[it] = {}
-    Cuts_data[it]["Slope"] = a
-    Cuts_data[it]["Constant"] = b
+    Cuts_data[it]["slope"] = a
+    Cuts_data[it]["constant"] = b
 
 
-    sys.exit()
+
