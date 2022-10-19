@@ -128,12 +128,12 @@ model.OBJ2 = pyo.Objective(rule=SubProblem, sense=pyo.maximize)
 
     #"""constraints for subproblem"""
     #constraint for volume in t=25, the dual constraint
-def constraint_dual(model,t):
+def constraint_dual(model):
     if (t==25):
-         return (model.V1_t[24] == model.x_1) #legger til at output volum fra masterproblem er nå input volum i sub problem
+         return (model.V1_t[25] == model.x_1) #legger til at output volum fra masterproblem er nå input volum i sub problem
     else:
         return pyo.Constraint.Skip
-model.C6 = pyo.Constraint(model.T_2, rule=constraint_dual)
+model.C6 = pyo.Constraint(model.T_2, rule=constraint_dual) #trenger ikke for alle t
 
     # constraint 1, ensure that Q_t is lower than Qmax
 def constraint_Q(model, t):

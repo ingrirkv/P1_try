@@ -78,13 +78,13 @@ Preliminary_results = {} # save information regarding the cuts
 Initiate the Benders Decomposition problem
 """
 
-for iteration in range(1,10): 
+for iteration in range(10):
     
     """
     Initiate the master problem 
     """
     
-    x_1 = MasterProblem(Data[0], iteration, Cuts_data)
+    x_1 = MasterProblem(Data[0], iteration, Cuts_data) # her kaller vi på masterfunksjonen
 
     x_1_data[iteration] = x_1
     
