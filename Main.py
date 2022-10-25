@@ -44,7 +44,7 @@ def MasterProblem(Cuts_data):  # ha med itaration,
     for t in range(25):
         Dict[t] = 50 + t
     model.p_t = pyo.Param(model.T_1, initialize=Dict)
-    print("Pris", Dict)
+    #print("Pris", Dict)
 
 
     "Variables"
@@ -52,12 +52,11 @@ def MasterProblem(Cuts_data):  # ha med itaration,
     model.Q_t = pyo.Var(model.T_1, domain=pyo.NonNegativeReals)  # outflow
     model.V1_t = pyo.Var(model.T_1, domain=pyo.NonNegativeReals)  # volume of water during the first 24 hours
     model.x_1 = pyo.Var(domain=pyo.NonNegativeReals)
-    model.alpha = pyo.Var(domain=pyo.NonNegativeReals, bounds=(-10e6, 10e6))  # usikker på om alpha er en variabel
+    model.alpha = pyo.Var(domain=pyo.NonNegativeReals, bounds=(-10e10, 10e10))  # usikker på om alpha er en variabel
 
     """objective function"""
     def objective_func(model):
         obj_del1 = sum(model.P_t[t] * model.p_t[t] for t in model.T_1) + model.alpha  # Cuts_data.   # Objective function, er noe feil her for vi må egentlig bruke den Cuts_data
-        print("obj_1:", obj_del1)
         return obj_del1
     model.obj_del1 = pyo.Objective(rule=objective_func, sense=pyo.maximize)
 
@@ -107,19 +106,19 @@ def MasterProblem(Cuts_data):  # ha med itaration,
         print("Creating cut: ", cut)
         return(model.alpha <= model.Cuts_data[cut]["slope"] * model.V1_t[24] + model.Cuts_data[cut]["constant"])
 
-    model.C5 = pyo.Constraint(model.Cuts, rule=Constraint_cuts)
+    model.CC = pyo.Constraint(model.Cuts, rule=Constraint_cuts)
 
 
     # vi løser den her med solver osv
     solver = 'gurobi'
     opt = SolverFactory(solver, load_solution=True)
     results = opt.solve(model, load_solutions=True)
-    print("result", results)
+    #print("result", results)
     #model.display()
-    print("hei",pyo.value(model.obj_del1))
-    x_1 = model.V1_t[24]
-    print("dette er verdien til x1:", x_1.value)
-    return x_1.value
+    print("max profit",pyo.value(model.obj_del1))
+    x_1 = model.V1_t[24].value
+    print("dette er verdien til x1:", x_1)
+    return x_1
 
 
 #subproblem
@@ -158,7 +157,7 @@ def SubProblem(x_1):
     for t in range(25,49):
         Dict_2[t] = 50 + t
     model_2.p_t_2 = pyo.Param(model_2.T_2, initialize=Dict_2)
-    print("Pris", Dict_2)
+    #print("Pris", Dict_2)
 
     "Variables"
     model_2.P_t = pyo.Var(model_2.T_2, domain=pyo.NonNegativeReals) #produced electricity
@@ -179,7 +178,7 @@ def SubProblem(x_1):
     model_2.C6 = pyo.Constraint(rule=constraint_dual)
 
     def constraint_V3(model_2):
-        return (model_2.V1_t[25] == model_2.x_1 + model_2.I_2 - model_2.Q_t[25]) #sjekk denne mer
+        return (model_2.V1_t[25] == model_2.SV + model_2.I_2 - model_2.Q_t[25]) #sjekk denne mer
     model_2.C7 = pyo.Constraint(rule=constraint_V3)
 
     # constraint 1, ensure that Q_t is lower than Qmax
@@ -216,9 +215,10 @@ def SubProblem(x_1):
     solver = 'gurobi'
     opt = SolverFactory(solver, load_solution=True)
     results = opt.solve(model_2, load_solutions=True)
-    model_2.display()
+    #model_2.display()
     dual = model_2.dual[model_2.C6]
     obj_2 = pyo.value(model_2.obj)
+    print("dual er :",dual)
 
 
     return obj_2, dual
