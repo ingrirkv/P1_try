@@ -105,9 +105,11 @@ def SubProblem(x_1):
     solver = 'gurobi'
     opt = SolverFactory(solver, load_solution=True)
     results = opt.solve(model_2, load_solutions=True)
-    #model_2.display()
+    model_2.display()
     dual = model_2.dual[model_2.C6]
     obj_2 = pyo.value(model_2.obj)
+    x_2 = model_2.V1_t[48].value
+    print("x_2 ved time 48:", x_2)
     print("dual er :",dual)
 
 
@@ -225,6 +227,7 @@ def FirstDayProblem(Cuts_data):  # ha med itaration,
     x_1 = model.V1_t[24].value
     object = pyo.value(model.obj_del1)
     print("dette er verdien til obj:", object)
+    print("Verdien ut av first day:", x_1)
     return object
 
 
@@ -241,7 +244,7 @@ def CreateCuts(obj_2, dual, x_1):
 Cuts_data = {}
 #må ikke vi fortelle Cuts_Data at første verdi er cut nr, så er det "slope" så "constant"
 
-DiscreteList = [0,1,2,3,4,5,6,7,8,9]
+DiscreteList = [0,5,9]
 Cuts_data = {}
 ListOfCuts = []
 
@@ -257,7 +260,8 @@ for it in range(3):
 print(Cuts_data)
 x_1 = FirstDayProblem(Cuts_data)
 print("x_1 har verdi:", x_1)
-print("hei", x_1)
+
+
 
 
 

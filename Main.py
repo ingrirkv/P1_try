@@ -102,8 +102,8 @@ def MasterProblem(Cuts_data):  # ha med itaration,
     model.Cuts_data = Cuts_data # lager set med hvor mange cut vi har
 
     def Constraint_cuts(model, cut):
-        print(model.Cuts_data[cut]["slope"], model.Cuts_data[cut]["constant"])
-        print("Creating cut: ", cut)
+        #print(model.Cuts_data[cut]["slope"], model.Cuts_data[cut]["constant"])
+        #print("Creating cut: ", cut)
         return(model.alpha <= model.Cuts_data[cut]["slope"] * model.V1_t[24] + model.Cuts_data[cut]["constant"])
 
     model.CC = pyo.Constraint(model.Cuts, rule=Constraint_cuts)
@@ -117,7 +117,8 @@ def MasterProblem(Cuts_data):  # ha med itaration,
     #model.display()
     print("max profit",pyo.value(model.obj_del1))
     x_1 = model.V1_t[24].value
-    print("dette er verdien til x1:", x_1)
+    #model.V1_t.display()
+    #model.P_t.display()
     return x_1
 
 
@@ -150,7 +151,6 @@ def SubProblem(x_1):
     model_2.WV_end = pyo.Param(initialize=WV_end)
     model_2.I_2 = pyo.Param(initialize=I_2)
 
-
     #price:
     # price:
     Dict_2 = {}
@@ -163,7 +163,7 @@ def SubProblem(x_1):
     model_2.P_t = pyo.Var(model_2.T_2, domain=pyo.NonNegativeReals) #produced electricity
     model_2.Q_t = pyo.Var(model_2.T_2, domain=pyo.NonNegativeReals) #outflow
     model_2.V1_t = pyo.Var(model_2.T_2, domain=pyo.NonNegativeReals) #volume of water
-
+    model_2.SV = pyo.Var(domain=pyo.NonNegativeReals)
 
 #Subproblem
     def obj_2(model_2):
@@ -173,8 +173,12 @@ def SubProblem(x_1):
 
     """constraints for subproblem"""
     #constraint for volume in t=25, the dual constraint
+    #def constraint_dual(model_2):
+     #   return (model_2.V1_t[25] - model_2.I_2 + model_2.Q_t[25]== model_2.x_1) #legger til at output volum fra masterproblem er nå input volum i sub problem
+    #model_2.C6 = pyo.Constraint(rule=constraint_dual)
+
     def constraint_dual(model_2):
-             return (model_2.V1_t[25] - model_2.I_2 + model_2.Q_t[25]== model_2.x_1) #legger til at output volum fra masterproblem er nå input volum i sub problem
+        return(model_2.SV == model_2.x_1)
     model_2.C6 = pyo.Constraint(rule=constraint_dual)
 
     def constraint_V3(model_2):
@@ -218,8 +222,8 @@ def SubProblem(x_1):
     #model_2.display()
     dual = model_2.dual[model_2.C6]
     obj_2 = pyo.value(model_2.obj)
-    print("dual er :",dual)
-
+    model_2.V1_t.display()
+    model_2.P_t.display()
 
     return obj_2, dual
 
@@ -236,16 +240,16 @@ Cuts_data = {}
 
 for it in range (10):
 
+    print("iteration number:", it)
     x_1 = MasterProblem(Cuts_data)
     print("x_1 har verdi:", x_1)
 
     #for s in range(4):
     obj_2, dual = SubProblem(x_1)
 
-    print("obj_2:", obj_2," dual", dual)
     a, b = CreateCuts(obj_2,dual,x_1)
-    print("it:", it, "a: ", a, "b:",b)
-
+    print("a: ", a, "b:",b)
+    print(" ")
     #List_of_cuts.append(it)
     #Cuts_data.append(it)
     Cuts_data[it] = {}

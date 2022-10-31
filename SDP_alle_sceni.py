@@ -245,12 +245,12 @@ def CreateCuts(HjelpeListe):
     return (a,b)
 
 
-DiscreteList = [0,1,2,3,4,5,6,7,8,9]
+DiscreteList = [0,1,2,3,4,5,6,7,8,9,10]
 Cuts_data = {}
 ListOfCuts = []
 HjelpeListe = []
 
-for it in range(10):
+for it in range(11):
 
     for s in range(5):
         HjelpeListe.append(s)
